@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}{{ title }}{% endblock %}</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('index') }}">Учёт заявок</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% if current_user %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('requests_list') }}">Заявки</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('new_request') }}">Новая заявка</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('stats') }}">Статистика</a>
+        </li>
+        {% if current_user['user_type'] == 'Менеджер' %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('new_client') }}">Новый заказчик</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('manage_users') }}">Управление пользователями</a>
+        </li>
+        {% endif %}
+        {% if current_user['user_type'] == 'Администратор' %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('manage_users') }}">Управление пользователями</a>
+        </li>
+        {% endif %}
+        {% endif %}
+      </ul>
+      <span class="navbar-text">
+        {% if current_user %}
+          {{ current_user['fio'] }} ({{ current_user['user_type'] }}) |
+          <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light ms-2">Выход</a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-light">Войти</a>
+          <a href="{{ url_for('register') }}" class="btn btn-sm btn-outline-light ms-2">Регистрация</a>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+</nav>
+
+<div class="container app-shell">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-11 col-xl-10">
+      <div class="card app-card">
+        <div class="card-header app-card-header">
+          <h5 class="mb-0">{% block header %}{{ title }}{% endblock %}</h5>
+        </div>
+        <div class="card-body bg-white">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, msg in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                  {{ msg }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // Функция для показа toast уведомлений
+  function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+    
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+    
+    toast.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.5rem;">${icons[type] || icons.info}</span>
+        <span style="flex: 1; font-weight: 500;">${message}</span>
+        <button onclick="this.parentElement.parentElement.remove()" 
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.5;">
+          ×
+        </button>
+      </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    // Автоматическое удаление через 5 секунд
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 500);
+    }, 5000);
+  }
+  
+  // Показываем toast при успешном редактировании (если есть параметр в URL)
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const edited = urlParams.get('edited');
+    const created = urlParams.get('created');
+    
+    if (edited === 'true') {
+      showToast('Заявка успешно обновлена!', 'success');
+    }
+    if (created === 'true') {
+      showToast('Заявка успешно создана!', 'success');
+    }
+    
+    // Анимация появления элементов
+    const cards = document.querySelectorAll('.card, table tbody tr');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        card.style.transition = 'all 0.5s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, index * 50);
+    });
+    
+    // Обработка отправки форм с уведомлением (только для форм не в модальных окнах)
+    const forms = document.querySelectorAll('form:not(.modal form)');
+    forms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          const originalText = submitBtn.innerHTML;
+          submitBtn.innerHTML = '⏳ Сохранение...';
+          submitBtn.disabled = true;
+          
+          // Если форма не прошла валидацию, вернём кнопку в исходное состояние
+          setTimeout(() => {
+            if (!form.checkValidity()) {
+              submitBtn.innerHTML = originalText;
+              submitBtn.disabled = false;
+            }
+          }, 100);
+        }
+      });
+    });
+    
+    // Для форм в модальных окнах - НЕ блокируем отправку, только меняем текст кнопки
+    const modalForms = document.querySelectorAll('.modal form');
+    modalForms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        // НЕ вызываем preventDefault - форма должна отправиться
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.innerHTML = '⏳ Сохранение...';
+          submitBtn.disabled = true;
+        }
+        // Форма отправится нормально, мы не блокируем
+      }, { passive: true });
+    });
+    
+    // Плавная прокрутка к элементам
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+    
+    // Эффект при наведении на кнопки
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-3px) scale(1.05)';
+      });
+      btn.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+    
+    // Валидация форм с визуальной обратной связью
+    let changedFields = new Set();
+    document.querySelectorAll('input, textarea, select').forEach(input => {
+      const initialValue = input.value;
+      
+      input.addEventListener('change', function() {
+        if (this.value !== initialValue) {
+          changedFields.add(this.name || this.id);
+          this.style.borderColor = '#ffc107';
+          this.style.boxShadow = '0 0 0 0.2rem rgba(255, 193, 7, 0.25)';
+        } else {
+          changedFields.delete(this.name || this.id);
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        }
+      });
+      
+      input.addEventListener('blur', function() {
+        if (this.checkValidity()) {
+          if (this.value !== initialValue) {
+            this.style.borderColor = '#28a745';
+          }
+        } else {
+          this.style.borderColor = '#dc3545';
+          showToast('Пожалуйста, заполните поле корректно', 'warning');
+        }
+      });
+      
+      input.addEventListener('input', function() {
+        if (this.checkValidity() && this.value !== initialValue) {
+          this.style.borderColor = '#ffc107';
+        }
+      });
+    });
+    
+    // Показываем уведомление при изменении формы редактирования
+    const editForm = document.querySelector('form[action*="edit"]');
+    if (editForm) {
+      editForm.addEventListener('submit', function(e) {
+        if (changedFields.size > 0) {
+          showToast(`Изменено полей: ${changedFields.size}. Сохранение...`, 'info');
+        }
+      });
+    }
+    
+    // Подсветка строк таблицы при наведении
+    document.querySelectorAll('table tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = '#f0f4ff';
+        this.style.cursor = 'pointer';
+      });
+      row.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '';
+      });
+    });
+    
+    // Анимация появления модальных окон
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      modal.addEventListener('show.bs.modal', function() {
+        this.style.opacity = '0';
+        setTimeout(() => {
+          this.style.transition = 'opacity 0.3s ease';
+          this.style.opacity = '1';
+        }, 10);
+      });
+    });
+  });
+  
+  // Функция для подтверждения действий
+  function confirmAction(message, callback) {
+    if (confirm(message)) {
+      callback();
+    }
+  }
+  
+  // Обработка успешного сохранения формы редактирования
+  window.addEventListener('pageshow', function(event) {
+    if (event.persisted || (performance.navigation.type === 2)) {
+      // Страница загружена из кэша (назад/вперёд)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('edited') === 'true') {
+        showToast('Изменения успешно сохранены!', 'success');
+      }
+    }
+  });
+</script>
+</body>
+</html>
+

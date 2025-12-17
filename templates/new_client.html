@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Новый заказчик{% endblock %}
+{% block header %}Новый заказчик{% endblock %}
+
+{% block content %}
+<h1>Новый заказчик</h1>
+<form method="post" class="mt-3" style="max-width: 600px;">
+  <div class="mb-3">
+    <label class="form-label">ФИО</label>
+    <input type="text" name="fio" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Телефон</label>
+    <input type="text" name="phone" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Логин</label>
+    <input type="text" name="login" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Пароль</label>
+    <input type="password" name="password" class="form-control" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Создать заказчика</button>
+  <a href="{{ url_for('requests_list') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
+

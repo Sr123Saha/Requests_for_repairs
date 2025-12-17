@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика{% endblock %}
+{% block header %}Статистика{% endblock %}
+
+{% block content %}
+<h1>Статистика</h1>
+<p>Количество выполненных заявок: <strong>{{ finished_count }}</strong></p>
+{% if avg_days_str %}
+<p>Среднее время выполнения заявки: <strong>{{ avg_days_str }} дня(дней)</strong></p>
+{% else %}
+<p>Недостаточно данных для расчета среднего времени выполнения заявок.</p>
+{% endif %}
+<h3 class="mt-4">Количество заявок по типам оборудования</h3>
+{% if type_rows %}
+<ul>
+  {% for r in type_rows %}
+  <li>{{ r.climate_tech_type }}: {{ r.cnt }}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Заявок пока нет.</p>
+{% endif %}
+{% endblock %}
+

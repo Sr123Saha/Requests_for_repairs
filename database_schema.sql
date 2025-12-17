@@ -6,11 +6,11 @@
 CREATE TABLE users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             fio TEXT NOT NULL,
-            phone TEXT NOT NULL,
+            phone TEXT,
             login TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             user_type TEXT NOT NULL CHECK (
-                user_type IN ('Менеджер', 'Специалист', 'Оператор', 'Заказчик', 'Менеджер по качеству')
+                user_type IN ('Администратор', 'Менеджер', 'Специалист', 'Оператор', 'Заказчик', 'Менеджер по качеству')
             ),
             is_active INTEGER DEFAULT 1,
             registration_date TEXT DEFAULT (DATE('now')),

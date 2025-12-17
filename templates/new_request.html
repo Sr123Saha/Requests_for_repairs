@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Новая заявка{% endblock %}
+{% block header %}Новая заявка{% endblock %}
+
+{% block content %}
+<h1>Новая заявка</h1>
+<form method="post" class="mt-3" style="max-width: 600px;">
+  <div class="mb-3">
+    <label class="form-label">Заказчик</label>
+    <select name="client_id" class="form-select" required>
+      <option value="">-- выберите заказчика --</option>
+      {% for c in clients %}
+      <option value="{{ c.user_id }}">{{ c.fio }}</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">
+      Не нашли нужного клиента? <a href="{{ url_for('new_client') }}">Создать нового заказчика</a>
+    </div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Дата</label>
+    <input type="date" name="start_date" class="form-control" value="{{ today }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Тип оборудования</label>
+    <input type="text" name="climate_tech_type" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Модель оборудования</label>
+    <input type="text" name="climate_tech_model" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Описание проблемы</label>
+    <textarea name="problem_description" class="form-control" rows="4" required></textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Назначить мастера (необязательно)</label>
+    <select name="master_id" class="form-select">
+      <option value="">-- не назначен --</option>
+      {% for s in specialists %}
+      <option value="{{ s.user_id }}">{{ s.fio }}{% if s.phone %} ({{ s.phone }}){% endif %}</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Мастера можно назначить позже при редактировании заявки</div>
+  </div>
+  <button type="submit" class="btn btn-primary">Создать</button>
+  <a href="{{ url_for('requests_list') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
+

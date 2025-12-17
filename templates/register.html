@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+{% block header %}Регистрация{% endblock %}
+
+{% block content %}
+<h1>Регистрация</h1>
+<p class="text-muted">После регистрации вы получите роль "Заказчик"</p>
+<form method="post" class="mt-3" style="max-width: 600px;">
+  <div class="mb-3">
+    <label class="form-label">ФИО <span class="text-danger">*</span></label>
+    <input type="text" name="fio" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Телефон</label>
+    <input type="text" name="phone" class="form-control" placeholder="Необязательно">
+    <div class="form-text">Номер телефона можно указать позже</div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Логин <span class="text-danger">*</span></label>
+    <input type="text" name="login" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Пароль <span class="text-danger">*</span></label>
+    <input type="password" name="password" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Подтверждение пароля <span class="text-danger">*</span></label>
+    <input type="password" name="password_confirm" class="form-control" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+  <a href="{{ url_for('login') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
+
