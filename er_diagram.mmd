@@ -1,0 +1,126 @@
+%% ER Diagram for Climate Repair System
+erDiagram
+  comments {
+    INTEGER comment_id PK
+    INTEGER request_id
+    INTEGER user_id
+    TEXT message
+    INTEGER is_internal
+    TEXT created_at
+  }
+  notifications {
+    INTEGER notification_id PK
+    INTEGER user_id
+    TEXT title
+    TEXT message
+    TEXT notification_type
+    INTEGER is_read
+    INTEGER related_request_id
+    TEXT created_at
+  }
+  request_history {
+    INTEGER history_id PK
+    INTEGER request_id
+    TEXT old_status
+    TEXT new_status
+    INTEGER changed_by
+    TEXT change_reason
+    TEXT changed_at
+  }
+  request_parts {
+    INTEGER request_part_id PK
+    INTEGER request_id
+    INTEGER part_id
+    INTEGER quantity_needed
+    INTEGER quantity_used
+    TEXT status
+    TEXT order_date
+    TEXT expected_date
+    TEXT actual_date
+    TEXT notes
+  }
+  requests {
+    INTEGER request_id PK
+    TEXT request_number
+    TEXT start_date
+    TEXT climate_tech_type
+    TEXT climate_tech_model
+    TEXT problem_description
+    TEXT request_status
+    TEXT priority
+    TEXT completion_date
+    TEXT repair_parts
+    INTEGER estimated_time
+    INTEGER master_id
+    INTEGER client_id
+    INTEGER quality_manager_id
+    TEXT deadline_extension
+    TEXT extension_reason
+    INTEGER customer_agreement
+    INTEGER qr_code_generated
+    TEXT qr_code_token
+    INTEGER feedback_received
+    TEXT created_at
+    TEXT updated_at
+  }
+  reviews {
+    INTEGER review_id PK
+    INTEGER request_id
+    INTEGER rating
+    TEXT feedback
+    TEXT suggestions
+    TEXT review_date
+    INTEGER is_anonymous
+  }
+  spare_parts {
+    INTEGER part_id PK
+    TEXT part_code
+    TEXT part_name
+    TEXT description
+    TEXT category
+    TEXT manufacturer
+    INTEGER quantity_in_stock
+    INTEGER min_quantity
+    REAL price
+    TEXT unit
+    TEXT last_restock_date
+  }
+  specializations {
+    INTEGER spec_id PK
+    INTEGER user_id
+    TEXT equipment_type
+    TEXT skill_level
+    TEXT certification_date
+  }
+  sqlite_sequence {
+     name
+     seq
+  }
+  users {
+    INTEGER user_id PK
+    TEXT fio
+    TEXT phone
+    TEXT login
+    TEXT password
+    TEXT user_type
+    INTEGER is_active
+    TEXT registration_date
+    TEXT email
+    TEXT address
+    TEXT notes
+  }
+
+  %% Relationships
+  comments ||--o{ users : "user_id → user_id"
+  comments ||--o{ requests : "request_id → request_id"
+  notifications ||--o{ requests : "related_request_id → request_id"
+  notifications ||--o{ users : "user_id → user_id"
+  request_history ||--o{ users : "changed_by → user_id"
+  request_history ||--o{ requests : "request_id → request_id"
+  request_parts ||--o{ spare_parts : "part_id → part_id"
+  request_parts ||--o{ requests : "request_id → request_id"
+  requests ||--o{ users : "quality_manager_id → user_id"
+  requests ||--o{ users : "client_id → user_id"
+  requests ||--o{ users : "master_id → user_id"
+  reviews ||--o{ requests : "request_id → request_id"
+  specializations ||--o{ users : "user_id → user_id"
