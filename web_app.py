@@ -58,13 +58,12 @@ def login_required(view_func):
 
 
 def manager_required(view_func):
-    """Только для менеджеров и администраторов"""
+    """Только для менеджеров"""
     def wrapper(*args, **kwargs):
         if "user" not in session:
             return redirect(url_for("login"))
-        user_type = session.get("user", {}).get("user_type")
-        if user_type not in ["Менеджер", "Администратор"]:
-            flash("Доступ запрещён. Требуются права менеджера или администратора.", "danger")
+        if session.get("user", {}).get("user_type") != "Менеджер":
+            flash("Доступ запрещён. Требуются права менеджера.", "danger")
             return redirect(url_for("requests_list"))
         return view_func(*args, **kwargs)
     wrapper.__name__ = view_func.__name__
@@ -139,7 +138,6 @@ def index():
         return redirect(url_for("requests_list"))
     return redirect(url_for("login"))
 
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -158,7 +156,7 @@ def login():
                 cur = conn.cursor()
                 cur.execute(
                     """
-                    SELECT user_id, fio, user_type
+                    SELECT user_id, fio, user_type, is_active
                     FROM users
                     WHERE login = ? AND password = ?
                     """,
@@ -169,15 +167,58 @@ def login():
             if row is None:
                 flash("Неверный логин или пароль.", "danger")
             else:
-                session["user"] = {
-                    "user_id": row["user_id"],
-                    "fio": row["fio"],
-                    "user_type": row["user_type"],
-                }
-                flash(f"Добро пожаловать, {row['fio']}!", "success")
-                return redirect(url_for("requests_list"))
+                # ПРОВЕРКА: если пользователь НЕ активен
+                if row["is_active"] == 0:
+                    flash("❌ Ваш аккаунт заблокирован. Обратитесь к менеджеру.", "danger")
+                else:
+                    session["user"] = {
+                        "user_id": row["user_id"],
+                        "fio": row["fio"],
+                        "user_type": row["user_type"],
+                    }
+                    flash(f"✅ Добро пожаловать, {row['fio']}!", "success")
+                    return redirect(url_for("requests_list"))
 
     return render_template("login.html", current_user=session.get("user"))
+
+# @app.route("/login", methods=["GET", "POST"])
+# def login():
+#     if request.method == "POST":
+#         login_value = request.form.get("login", "").strip()
+#         password = request.form.get("password", "").strip()
+#         if not login_value or not password:
+#             flash("Введите логин и пароль.", "warning")
+#         else:
+#             try:
+#                 conn = get_connection()
+#             except FileNotFoundError as exc:
+#                 flash(str(exc), "danger")
+#                 return render_template("login.html", current_user=session.get("user"))
+
+#             with conn:
+#                 cur = conn.cursor()
+#                 cur.execute(
+#                     """
+#                     SELECT user_id, fio, user_type
+#                     FROM users
+#                     WHERE login = ? AND password = ?
+#                     """,
+#                     (login_value, password),
+#                 )
+#                 row = cur.fetchone()
+
+#             if row is None:
+#                 flash("Неверный логин или пароль.", "danger")
+#             else:
+#                 session["user"] = {
+#                     "user_id": row["user_id"],
+#                     "fio": row["fio"],
+#                     "user_type": row["user_type"],
+#                 }
+#                 flash(f"Добро пожаловать, {row['fio']}!", "success")
+#                 return redirect(url_for("requests_list"))
+
+#     return render_template("login.html", current_user=session.get("user"))
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -658,64 +699,46 @@ def stats():
 @login_required
 @manager_required
 def manage_users():
-    """Управление пользователями - для администратора и менеджера. Позволяет менять роли и редактировать пользователей."""
+    """Управление пользователями - для менеджера."""
     try:
         conn = get_connection()
     except FileNotFoundError as exc:
         flash(str(exc), "danger")
         return redirect(url_for("requests_list"))
     
-    current_user_role = session.get("user", {}).get("user_type")
-    
     if request.method == "POST":
-        action = request.form.get("action", "").strip()
+        # Меняем роль и статус
         user_id = request.form.get("user_id", "").strip()
+        new_role = request.form.get("user_type", "").strip()
+        is_active = request.form.get("is_active", "").strip()
         
-        if action == "edit_user":
-            # Редактирование пользователя (все поля кроме пароля)
-            fio = request.form.get("fio", "").strip()
-            phone = request.form.get("phone", "").strip() or None
-            login_value = request.form.get("login", "").strip()
-            new_role = request.form.get("user_type", "").strip()
-            is_active = request.form.get("is_active", "").strip()
-            
-            if not (user_id and fio and login_value and new_role):
-                flash("Заполните все обязательные поля (ФИО, логин, роль).", "warning")
-            else:
-                try:
-                    with conn:
-                        cur = conn.cursor()
-                        # Проверяем, что пользователь существует
-                        cur.execute("SELECT user_id, fio, user_type FROM users WHERE user_id = ?", (user_id,))
-                        user = cur.fetchone()
-                        if not user:
-                            flash("Пользователь не найден.", "danger")
-                        else:
-                            # Проверяем, не занят ли логин другим пользователем
-                            cur.execute("SELECT user_id FROM users WHERE login = ? AND user_id != ?", (login_value, user_id))
-                            if cur.fetchone():
-                                flash("Логин уже используется другим пользователем.", "danger")
-                            else:
-                                # Проверяем валидность роли
-                                valid_roles = ['Администратор', 'Менеджер', 'Специалист', 'Оператор', 'Заказчик', 'Менеджер по качеству']
-                                if new_role not in valid_roles:
-                                    flash("Некорректная роль.", "danger")
-                                else:
-                                    # Обновляем данные пользователя (все кроме пароля)
-                                    is_active_value = 1 if is_active == "1" else 0
-                                    cur.execute(
-                                        """
-                                        UPDATE users 
-                                        SET fio = ?, phone = ?, login = ?, user_type = ?, is_active = ?
-                                        WHERE user_id = ?
-                                        """,
-                                        (fio, phone, login_value, new_role, is_active_value, user_id)
-                                    )
-                                    conn.commit()
-                                    flash(f"Данные пользователя '{fio}' успешно обновлены.", "success")
-                                    return redirect(url_for("manage_users"))
-                except Exception as e:
-                    flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
+        if not user_id or not new_role:
+            flash("Ошибка: не указаны данные.", "danger")
+        else:
+            try:
+                with conn:
+                    cur = conn.cursor()
+                    # Обновляем роль и статус
+                    is_active_value = 1 if is_active == "1" else 0
+                    cur.execute(
+                        """
+                        UPDATE users 
+                        SET user_type = ?, is_active = ?
+                        WHERE user_id = ?
+                        """,
+                        (new_role, is_active_value, user_id)
+                    )
+                    conn.commit()
+                    
+                    # Получаем имя пользователя для сообщения
+                    cur.execute("SELECT fio FROM users WHERE user_id = ?", (user_id,))
+                    user = cur.fetchone()
+                    if user:
+                        flash(f"Роль пользователя '{user['fio']}' изменена на '{new_role}'.", "success")
+                    else:
+                        flash("Роль изменена.", "success")
+            except Exception as e:
+                flash(f"Ошибка: {str(e)}", "danger")
     
     # Получаем список всех пользователей
     with conn:
@@ -729,13 +752,9 @@ def manage_users():
         )
         users = cur.fetchall()
     
-    roles = ['Администратор', 'Менеджер', 'Специалист', 'Оператор', 'Заказчик', 'Менеджер по качеству']
-    
     return render_template("manage_users.html",
                         current_user=session.get("user"),
-                        users=users,
-                        roles=roles,
-                        current_user_role=current_user_role)
+                        users=users)
 
 
 @app.route("/qr/<int:request_id>")
@@ -780,5 +799,3 @@ def qr_for_request(request_id: int):
 if __name__ == "__main__":
     # Для учебного проекта можно оставить debug=True
     app.run(debug=True)
-
-
