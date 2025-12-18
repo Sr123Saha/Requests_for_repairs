@@ -45,7 +45,8 @@
                 <option value="Заказчик" {% if u.user_type == 'Заказчик' %}selected{% endif %}>Заказчик</option>
                 <option value="Специалист" {% if u.user_type == 'Специалист' %}selected{% endif %}>Специалист</option>
                 <option value="Оператор" {% if u.user_type == 'Оператор' %}selected{% endif %}>Оператор</option>
-                <option value="Менеджер" {% if u.user_type == 'Менеджер' %}selected{% endif %}>Менеджер</option>
+              <option value="Менеджер" {% if u.user_type == 'Менеджер' %}selected{% endif %}>Менеджер</option>
+              <option value="Менеджер по качеству" {% if u.user_type == 'Менеджер по качеству' %}selected{% endif %}>Менеджер по качеству</option>
               </select>
             </div>
         </td>

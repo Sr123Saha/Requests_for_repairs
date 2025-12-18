@@ -6,54 +6,56 @@
 {% block content %}
 <h1>Список заявок</h1>
 <p><a class="btn btn-success btn-sm" href="{{ url_for('new_request') }}">Новая заявка</a></p>
-<table class="table table-striped table-bordered">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Номер</th>
-      <th>Дата</th>
-      <th>Оборудование</th>
-      <th>Проблема</th>
-      <th>Клиент</th>
-      <th>Мастер</th>
-      <th>Статус</th>
-      <th>Действия</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for r in requests %}
-    <tr>
-      <td>{{ r.request_id }}</td>
-      <td>{{ r.request_number }}</td>
-      <td>{{ r.start_date }}</td>
-      <td>{{ r.climate_tech_type }} / {{ r.climate_tech_model }}</td>
-      <td>{{ r.problem_description }}</td>
-      <td>{{ r.client_fio }}</td>
-      <td>
-        {% if r.master_fio %}
-          {{ r.master_fio }}
-          {% if r.master_phone %}
-            <br><small class="text-muted">{{ r.master_phone }}</small>
+<div class="table-responsive">
+  <table class="table table-striped table-bordered mb-0">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Номер</th>
+        <th>Дата</th>
+        <th>Оборудование</th>
+        <th>Проблема</th>
+        <th>Клиент</th>
+        <th>Мастер</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in requests %}
+      <tr>
+        <td>{{ r.request_id }}</td>
+        <td>{{ r.request_number }}</td>
+        <td>{{ r.start_date }}</td>
+        <td>{{ r.climate_tech_type }} / {{ r.climate_tech_model }}</td>
+        <td>{{ r.problem_description }}</td>
+        <td>{{ r.client_fio }}</td>
+        <td>
+          {% if r.master_fio %}
+            {{ r.master_fio }}
+            {% if r.master_phone %}
+              <br><small class="text-muted">{{ r.master_phone }}</small>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">Не назначен</span>
           {% endif %}
-        {% else %}
-          <span class="text-muted">Не назначен</span>
-        {% endif %}
-      </td>
-      <td><span class="badge status-badge {{ r.status_class }}">{{ r.request_status }}</span></td>
-      <td>
-        {% if r.can_edit %}
-          <a href="{{ url_for('edit_request', request_id=r.request_id) }}" 
-             class="btn btn-outline-warning btn-sm me-1" 
-             title="Редактировать заявку">✏️ Редактировать</a>
-        {% endif %}
-        <a href="{{ url_for('qr_for_request', request_id=r.request_id) }}" target="_blank"
-           class="btn btn-outline-primary btn-sm" title="QR-код для отзыва">
-          📱 QR
-        </a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        </td>
+        <td><span class="badge status-badge {{ r.status_class }}">{{ r.request_status }}</span></td>
+        <td>
+          {% if r.can_edit %}
+            <a href="{{ url_for('edit_request', request_id=r.request_id) }}" 
+               class="btn btn-outline-warning btn-sm me-1" 
+               title="Редактировать заявку">✏️ Редактировать</a>
+          {% endif %}
+          <a href="{{ url_for('qr_for_request', request_id=r.request_id) }}" target="_blank"
+             class="btn btn-outline-primary btn-sm" title="QR-код для отзыва">
+            📱 QR
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
 

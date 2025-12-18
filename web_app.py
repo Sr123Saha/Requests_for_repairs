@@ -91,7 +91,8 @@ def can_edit_request(request_id, user):
     user_type = user.get("user_type")
     user_id = user.get("user_id")
     
-    if user_type == "Администратор" or user_type == "Менеджер":
+    # Администратор, менеджер и менеджер по качеству могут всё
+    if user_type in ("Администратор", "Менеджер", "Менеджер по качеству"):
         return (True, True, True)  # Может всё
     
     try:
@@ -271,39 +272,48 @@ def logout():
 @app.route("/requests")
 @login_required
 def requests_list():
+    current_user = session.get("user", {})
     try:
         conn = get_connection()
     except FileNotFoundError as exc:
         flash(str(exc), "danger")
-        return render_template("requests_list.html", 
-                                current_user=session.get("user"),
-                                requests=[])
+        return render_template(
+            "requests_list.html",
+            current_user=current_user,
+            requests=[],
+        )
+
+    # Базовый запрос списка заявок
+    base_query = """
+        SELECT
+            r.request_id,
+            r.request_number,
+            r.start_date,
+            r.climate_tech_type,
+            r.climate_tech_model,
+            r.problem_description,
+            r.request_status,
+            r.master_id,
+            u.fio AS client_fio,
+            m.fio AS master_fio,
+            m.phone AS master_phone
+        FROM requests r
+        LEFT JOIN users u ON r.client_id = u.user_id
+        LEFT JOIN users m ON r.master_id = m.user_id
+    """
+
+    params = ()
+    # Заказчик видит только свои заявки
+    if current_user.get("user_type") == "Заказчик":
+        base_query += " WHERE r.client_id = ?"
+        params = (current_user.get("user_id"),)
+
+    base_query += " ORDER BY r.start_date DESC, r.request_id DESC"
 
     with conn:
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT
-                r.request_id,
-                r.request_number,
-                r.start_date,
-                r.climate_tech_type,
-                r.climate_tech_model,
-                r.problem_description,
-                r.request_status,
-                r.master_id,
-                u.fio AS client_fio,
-                m.fio AS master_fio,
-                m.phone AS master_phone
-            FROM requests r
-            LEFT JOIN users u ON r.client_id = u.user_id
-            LEFT JOIN users m ON r.master_id = m.user_id
-            ORDER BY r.start_date DESC, r.request_id DESC
-            """
-        )
+        cur.execute(base_query, params)
         rows = cur.fetchall()
-
-    current_user = session.get("user", {})
     
     # Цветные бейджи статусов
     status_classes = {
@@ -342,30 +352,47 @@ def requests_list():
 @app.route("/requests/new", methods=["GET", "POST"])
 @login_required
 def new_request():
+    current_user = session.get("user", {})
     try:
         conn = get_connection()
     except FileNotFoundError as exc:
         flash(str(exc), "danger")
         return render_template("new_request.html",
-                                current_user=session.get("user"),
+                                current_user=current_user,
                                 clients=[],
                                 specialists=[],
                                 today=datetime.now().strftime("%Y-%m-%d"))
 
     with conn:
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT user_id, fio
-            FROM users
-            WHERE user_type = 'Заказчик'
-            ORDER BY fio
-            """
-        )
+        # Для заказчика показываем только его самого как клиента,
+        # для остальных ролей – всех активных заказчиков
+        if current_user.get("user_type") == "Заказчик":
+            cur.execute(
+                """
+                SELECT user_id, fio
+                FROM users
+                WHERE user_id = ? AND user_type = 'Заказчик' AND is_active = 1
+                """,
+                (current_user.get("user_id"),),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT user_id, fio
+                FROM users
+                WHERE user_type = 'Заказчик' AND is_active = 1
+                ORDER BY fio
+                """
+            )
         clients = cur.fetchall()
 
     if request.method == "POST":
-        client_id = request.form.get("client_id", "").strip()
+        # Заказчик всегда создаёт заявки только на себя, даже если подменить форму
+        if current_user.get("user_type") == "Заказчик":
+            client_id = str(current_user.get("user_id"))
+        else:
+            client_id = request.form.get("client_id", "").strip()
         start_date = request.form.get("start_date", "").strip()
         climate_type = request.form.get("climate_tech_type", "").strip()
         climate_model = request.form.get("climate_tech_model", "").strip()
